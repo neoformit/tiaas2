@@ -95,19 +95,33 @@ def numbers_csv(request):
     )
     for t in trainings:
         countries = [x.code for x in t.location]
-        data += f"{t.id},{t.start},{t.end},{'|'.join(countries)},{t.use_gtn},{t.attendance}\n"
+        data += ','.join([
+            t.id,
+            t.start,
+            t.end,
+            '|'.join(countries),
+            t.use_gtn,
+            t.attendance,
+        ]) + '\n'
 
     return HttpResponse(data, content_type="text/csv")
 
 
 def trainings_for(trainings, year, month, day):
-    # find trainings including this given day.
+    """Find trainings occuring on the given date."""
+
+    # TODO this should be a model method
+
     if day == 0:
         return 0
-    if year == 2020 and month == 1:
-        print(day, [x for x in trainings if x.start <= date(year, month, day) <= x.end])
 
-    return len([x for x in trainings if x.start <= date(year, month, day) <= x.end])
+    d = date(year, month, day)
+    current = trainings.filter(start__lte=d, end__gte=d)
+
+    if year == 2020 and month == 1:
+        print(day, list(current))
+
+    return current.count()
 
 
 def calendar_view(request):
