@@ -130,17 +130,18 @@ def calendar_view(request):
 
 
 def stats(request):
-    trainings = Training.objects.all().exclude(
+    trainings = Training.objects.exclude(
         training_identifier="test"
     )  # Exclude the 'test' group from showing up in calendar
-    approved = len([x for x in trainings if x.processed == "AP"])
-    waiting = len([x for x in trainings if x.processed == "UN"])
+    approved = trainings.filter(processed="AP").count()
+    waiting = trainings.filter(processed="UN").count()
     days = sum([(x.end - x.start).days for x in trainings])
-    students = sum([x.attendance for x in trainings])
-
-    current_trainings = len([x for x in trainings if x.start <= date.today() <= x.end])
-    earliest = min([x.start for x in trainings])
-
+    students = sum(trainings.values_list('attendance', flat=True))
+    current_trainings = trainings.filter(
+        start__lte=date.today(),
+        end__gte=date.today(),
+    ).count()
+    earliest = min(trainings.values_list('start', flat=True))
     locations = collections.Counter()
     for t in trainings:
         locations[t.location] += 1
@@ -272,8 +273,8 @@ def _summarize(d):
 
 def status(request, training_id):
     training_id = training_id.lower()
-
-    trainings = Training.objects.all().filter(training_identifier__iexact=training_id)
+    trainings = Training.objects.filter(
+        training_identifier__iexact=training_id)
     any_approved = any([t.processed == "AP" for t in trainings])
 
     if len(trainings) == 0 or not any_approved:
@@ -286,7 +287,7 @@ def status(request, training_id):
             },
         )
 
-    refresh = request.GET.get("refresh", False) != False
+    refresh = request.GET.get("refresh", False) is not False
     # hours param
     hours = int(request.GET.get("hours", 3))
     if hours > 64:
